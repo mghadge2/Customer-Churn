@@ -1,0 +1,958 @@
+---
+title: "Methods of Data Science - Final Project"
+author: "Chaitya Mehta and Pruthvi Patel"
+output:
+  word_document: default
+  html_notebook: default
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r}
+library(dplyr)
+library(RCurl)
+library(funModeling)
+library(tidyverse) 
+library(Hmisc)
+
+url1 = 'https://raw.githubusercontent.com/mghadge2/Customer-Churn/main/customer_data.csv'
+customerData = read.csv(url(url1))
+
+url2 = 'https://raw.githubusercontent.com/mghadge2/Customer-Churn/main/churn_data.csv'
+churnData = read.csv(url(url2))
+
+url3 = 'https://raw.githubusercontent.com/mghadge2/Customer-Churn/main/internet_data.csv'
+internetData = read.csv(url(url3))
+
+mainData = merge(merge(customerData,churnData,by="customerID"),internetData, by="customerID")
+
+head(mainData,5)
+glimpse(mainData)
+dim(mainData)
+summary(mainData)
+mainData$customerID=NULL #removing customerID from the dataset as it is just the primary key to identify the customer, it doesn't hold any significance
+```
+
+
+```{r}
+#install.packages("plotrix")
+library(plotrix)
+length(which(mainData$Churn == "No"))
+length(which(mainData$Churn == "Yes"))
+slices <- c(5174,1869)
+lbls <- c("Not Churn", "Churn")
+pct <- (slices/sum(slices)*100)
+pct = sprintf("%0.2f", round(pct, digits = 2))
+lbls <- paste(lbls,"-", pct) # add percents to labels
+lbls <- paste(lbls,"%",sep="") # ad % to labels
+pie3D(slices,labels=lbls,main="Churn vs Not Churn",col=rainbow(length(slices)))
+
+```
+```{r}
+#install.packages("plotrix")
+library(plotrix)
+length(which(mainData$gender == "Male"))
+length(which(mainData$gender == "Female"))
+slices <- c(3555,3488)
+lbls <- c("Male","Female")
+pct <- (slices/sum(slices)*100)
+lbls <- paste(lbls,"\n", pct) # add percents to labels
+lbls <- paste(lbls,"%",sep="") # ad % to labels
+pie3D(slices,labels=lbls,main="Male vs Female",col=rainbow(length(slices)))
+
+```
+
+```{r}
+library(dplyr)
+M_C=filter(mainData, (mainData$gender=="Male" & mainData$Churn=="Yes"))
+M_NC=filter(mainData, (mainData$gender=="Male" & mainData$Churn=="No"))
+nrow(M_C)
+nrow(M_NC)
+# Number of Male who left the company (churned i.e. M_C) are 930
+# Number of Male who did not left the company (not churned i.e. M_NC) are 2625
+
+F_C=filter(mainData, (mainData$gender=="Female" & mainData$Churn=="Yes"))
+F_NC=filter(mainData, (mainData$gender=="Female" & mainData$Churn=="No"))
+nrow(F_C)
+nrow(F_NC)
+# Number of Female who left the company (churned i.e. F_C) are 939
+# Number of Female who did not left the company (not churned i.e. F_NC) are 2549
+
+slices1 <- c(930,2625)
+lbls <- c("Yes","No")
+pct <- (slices1/sum(slices1)*100)
+pct = sprintf("%0.2f", round(pct, digits = 2))
+lbls <- paste(lbls,"-", pct) # add percents to labels
+lbls <- paste(lbls,"%",sep="") # ad % to labels
+pie3D(slices1,labels=lbls,main="Male Customers - Not Churn vs Churn",col=rainbow(length(slices1)))
+
+slices1 <- c(939,2549)
+lbls <- c("Yes","No")
+pct <- (slices1/sum(slices1)*100)
+pct = sprintf("%0.2f", round(pct, digits = 2))
+lbls <- paste(lbls,"-", pct) # add percents to labels
+lbls <- paste(lbls,"%",sep="") # ad % to labels
+pie3D(slices1,labels=lbls,main="Female Customers - Churn vs Not Churn",col=rainbow(length(slices1)))
+
+
+```
+
+
+```{r}
+counts <- table(mainData$gender, mainData$Churn)
+# get percentages of vars
+
+pcnts <- scale(counts, FALSE, colSums(counts))*100
+# plot barplot
+
+bp <- barplot(pcnts, beside=TRUE, col=c("lightblue","red"),xlab="Gender - Non Churn vs Churn", ylab="Frequency (%)", border=NA)
+legend("top", legend=c("Female", "Male"), bty="n", fill=c("lightblue", "red"), border=NA)
+text(bp, 1, round(pcnts, 2), cex=1, pos=3, col=c("black"))
+```
+```{r}
+counts <- table(mainData$SeniorCitizen, mainData$Churn)
+
+# get percentages of vars
+pcnts <- scale(counts, FALSE, colSums(counts))*100
+
+# plot barplot
+bp <- barplot(pcnts, beside=TRUE, col=c("lightblue", "red"),xlab="SeniorCitizen - Non Churn vs Churn", ylab="Frequency (%)", border=NA)
+legend("top", legend=c("Not a SeniorCitizen", "SeniorCitizen"), bty="n", fill=c("lightblue", "red"), border=NA)
+text(bp, 1, round(pcnts, 2), cex=1, pos=3, col=c("black"))
+```
+
+```{r}
+#colnames(mainData)
+counts <- table(mainData$Partner, mainData$Churn)
+
+# get percentages of vars
+pcnts <- scale(counts, FALSE, colSums(counts))*100
+
+# plot barplot
+bp <- barplot(pcnts, beside=TRUE, col=c("lightblue", "red"),xlab="Partner - Non Churn vs Churn", ylab="Frequency (%)", border=NA)
+legend("top", legend=c("Doesn't have a Partner", "Have a Partner"), bty="n", fill=c("lightblue", "red"), border=NA)
+text(bp, 1, round(pcnts, 2), cex=1, pos=3, col=c("black"))
+```
+```{r}
+#colnames(mainData)
+counts <- table(mainData$Dependents, mainData$Churn)
+
+# get percentages of vars
+pcnts <- scale(counts, FALSE, colSums(counts))*100
+
+# plot barplot
+bp <- barplot(pcnts, beside=TRUE, col=c("lightblue", "red"),xlab="Dependents - Non Churn vs Churn", ylab="Frequency (%)", border=NA)
+legend("top", legend=c("No Dependents", "Have Dependents"), bty="n", fill=c("lightblue", "red"), border=NA,cex=0.6)
+text(bp, 1, round(pcnts, 2), cex=1, pos=3, col=c("black"))
+```
+```{r}
+#colnames(mainData)
+counts <- table(mainData$PhoneService, mainData$Churn)
+
+# get percentages of vars
+pcnts <- scale(counts, FALSE, colSums(counts))*100
+
+# plot barplot
+bp <- barplot(pcnts, beside=TRUE, col=c("lightblue", "red"),xlab="PhoneService - Non Churn vs Churn", ylab="Frequency (%)", border=NA)
+legend("topright", legend=c("Doesn't uses PhoneService", "Uses PhoneService"), bty="n", fill=c("lightblue", "red"), border=NA)
+text(bp, 1, round(pcnts, 2), cex=1, pos=3, col=c("black"))
+```
+```{r}
+colnames(mainData)
+counts <- table(mainData$MultipleLines, mainData$Churn)
+
+# get percentages of vars
+pcnts <- scale(counts, FALSE, colSums(counts))*100
+
+# plot barplot
+bp <- barplot(pcnts, beside=TRUE, col=c("lightblue", "green","red"),xlab="MultipleLines - Non Churn vs Churn", ylab="Frequency (%)", border=NA,space = c(0,5))
+legend("center", legend=c("No","No phone Service ", "Yes"), bty="n", fill=c("lightblue","green", "red"), border=NA)
+text(bp, 1, round(pcnts, 2), cex=1, pos=3, col=c("black"))
+```
+```{r}
+colnames(mainData)
+counts <- table(mainData$InternetService, mainData$Churn)
+
+# get percentages of vars
+pcnts <- scale(counts, FALSE, colSums(counts))*100
+
+# plot barplot
+bp <- barplot(pcnts, beside=TRUE, col=c("lightblue", "green","red"),xlab="InternetService - Non Churn vs Churn", ylab="Frequency (%)", border=NA,space = c(0,5))
+legend("center", legend=c("Fiber optic","No", "DSL"), bty="n", fill=c("lightblue","green", "red"), border=NA)
+text(bp, 1, round(pcnts, 2), cex=1, pos=3, col=c("black"))
+```
+```{r}
+#colnames(mainData)
+counts <- table(mainData$OnlineSecurity, mainData$Churn)
+
+# get percentages of vars
+pcnts <- scale(counts, FALSE, colSums(counts))*100
+
+# plot barplot
+bp <- barplot(pcnts, beside=TRUE, col=c("lightblue","red","green"),xlab="OnlineSecurity - Non Churn vs Churn", ylab="Frequency (%)", border=NA,space = c(0,5))
+legend("center", legend=c("No", "No internet service", "Yes"), bty="n", fill=c("lightblue", "red","green"), border=NA)
+text(bp, 1, round(pcnts, 2), cex=1, pos=3, col=c("black"))
+```
+
+```{r}
+#colnames(mainData)
+counts <- table(mainData$OnlineBackup, mainData$Churn)
+
+# get percentages of vars
+pcnts <- scale(counts, FALSE, colSums(counts))*100
+
+# plot barplot
+bp <- barplot(pcnts, beside=TRUE, col=c("lightblue","red","green"),xlab="OnlineBackup - Non Churn vs Churn", ylab="Frequency (%)", border=NA,space = c(0,5))
+legend("center", legend=c("No", "No internet service", "Yes"), bty="n", fill=c("lightblue", "red","green"), border=NA)
+text(bp, 1, round(pcnts, 2), cex=1, pos=3, col=c("black"))
+```
+
+```{r}
+#colnames(mainData)
+counts <- table(mainData$DeviceProtection, mainData$Churn)
+
+# get percentages of vars
+pcnts <- scale(counts, FALSE, colSums(counts))*100
+
+# plot barplot
+bp <- barplot(pcnts, beside=TRUE, col=c("lightblue", "red","green"),xlab="DeviceProtection - Non Churn vs Churn", ylab="Frequency (%)", border=NA,space = c(0,5))
+legend("center", legend=c("No", "No internet service", "Yes"), bty="n", fill=c("lightblue", "red","green"), border=NA)
+text(bp, 1, round(pcnts, 2), cex=1, pos=3, col=c("black"))
+```
+
+```{r}
+counts <- table(mainData$TechSupport, mainData$Churn)
+
+# get percentages of vars
+pcnts <- scale(counts, FALSE, colSums(counts))*100
+
+# plot barplot
+bp <- barplot(pcnts, beside=TRUE, col=c("lightblue", "red", "green"),xlab="TechSupport - Non Churn vs Churn", ylab="Frequency (%)", border=NA,space = c(0,5))
+legend("center", legend=c("No", "No internet service", "Yes"), bty="n", fill=c("lightblue", "red", "green"), border=NA)
+text(bp, 1, round(pcnts, 2), cex=1, pos=3, col=c("black"))
+```
+
+```{r}
+counts <- table(mainData$StreamingTV, mainData$Churn)
+
+# get percentages of vars
+pcnts <- scale(counts, FALSE, colSums(counts))*100
+
+# plot barplot
+bp <- barplot(pcnts, beside=TRUE, col=c("lightblue", "red", "green"),xlab="StreamingTV - Non Churn vs Churn", ylab="Frequency (%)", border=NA,space = c(0,5))
+legend("center", legend=c("No", "No internet service", "Yes"), bty="n", fill=c("lightblue", "red", "green"), border=NA)
+text(bp, 1, round(pcnts, 2), cex=1, pos=3, col=c("black"))
+```
+
+```{r}
+counts <- table(mainData$StreamingMovies, mainData$Churn)
+
+# get percentages of vars
+pcnts <- scale(counts, FALSE, colSums(counts))*100
+
+# plot barplot
+bp <- barplot(pcnts, beside=TRUE, col=c("lightblue", "red", "green"),xlab="StreamingMovies - Non Churn vs Churn", ylab="Frequency (%)", border=NA,space = c(0,5))
+legend("center", legend=c("No", "No internet service", "Yes"), bty="n", fill=c("lightblue", "red", "green"), border=NA)
+text(bp, 1, round(pcnts, 2), cex=1, pos=3, col=c("black"))
+```
+
+```{r}
+counts <- table(mainData$Contract, mainData$Churn)
+
+# get percentages of vars
+pcnts <- scale(counts, FALSE, colSums(counts))*100
+
+# plot barplot
+bp <- barplot(pcnts, beside=TRUE, col=c("lightblue","red", "green"),xlab="Contract - Non Churn vs Churn", ylab="Frequency (%)", border=NA,space = c(0,5))
+legend("center", legend=c("Month-to-Month","Two Year", "One Year"), bty="n", fill=c("lightblue","red", "green"), border=NA)
+text(bp, 1, round(pcnts, 2), cex=1, pos=3, col=c("black"))
+```
+
+```{r}
+counts <- table(mainData$PaperlessBilling, mainData$Churn)
+
+# get percentages of vars
+pcnts <- scale(counts, FALSE, colSums(counts))*100
+
+# plot barplot
+bp <- barplot(pcnts, beside=TRUE, col=c("lightblue", "red"),xlab="PaperlessBilling - Non Churn vs Churn", ylab="Frequency (%)", border=NA,space = c(0,5))
+legend("center", legend=c("No","Yes"), bty="n", fill=c("lightblue", "red"), border=NA)
+text(bp, 1, round(pcnts, 2), cex=1, pos=3, col=c("black"))
+```
+
+```{r}
+counts <- table(mainData$PaymentMethod, mainData$Churn)
+
+# get percentages of vars
+pcnts <- scale(counts, FALSE, colSums(counts))*100
+
+# plot barplot
+bp <- barplot(pcnts, beside=TRUE, col=c("lightblue","green", "red","orange"),xlab="PaymentMethod - Non Churn vs Churn", ylab="Frequency (%)", border=NA,space = c(0,5))
+legend("center", legend=c("Electronic Check","Bank Transfer", "Mailed check","Credit Card"), bty="n", fill=c("lightblue","green", "red","orange"), border=NA)
+text(bp, 1, round(pcnts, 2), cex=1, pos=3, col=c("black"))
+```
+
+```{r}
+#install.packages("dplyr")
+library(dplyr)
+churn.mainData = filter(mainData, Churn=="Yes")
+notchurn.mainData = filter(mainData, Churn=="No")
+#install.packages("DataExplorer")
+library(DataExplorer)
+par(mfrow = c(2, 2))
+plot_density(churn.mainData, title = "        MonthlyCharges, Tenure, TotalCharges - Customer Churn data")
+plot_histogram(churn.mainData, title = "        MonthlyCharges, Tenure, TotalCharges - Customer Churn data")
+plot_density(notchurn.mainData, title = "        MonthlyCharges, Tenure, TotalCharges - Customer non Churn data")
+plot_histogram(notchurn.mainData, title = "        MonthlyCharges, Tenure, TotalCharges - Customer non Churn data")
+```
+
+
+
+
+# Data Cleaning
+```{r}
+library(funModeling) 
+#copying the dataset into another which needs to be cleaned
+cleanData = data.frame(mainData)
+#checking for NA or blank values in the dataset
+status(cleanData)
+#11 rows with NA for TotalCharges variable
+
+#confirming  the number of NA rows for TotalCharges variable
+table(is.na(cleanData$TotalCharges))
+
+#accessing the data for all the 11 rows which has NA values for TotalCharges variable
+mainData[is.na(cleanData$TotalCharges), ]
+
+#taking a not of one customerID who had NA value so that we can confirm later to see if the value of TotalCharges column has been replaced by the mean value  or not "1371-DWPAZ"
+
+#Replacing NA values in TotalCharges column with the mean value of the entire column
+cleanData$TotalCharges <- ifelse(is.na(cleanData$TotalCharges), mean(cleanData$TotalCharges, na.rm=TRUE), cleanData$TotalCharges)
+
+cleanData[which(cleanData$customerID == "1371-DWPAZ"), ]
+#value of TotalCharges column for this records has been changed to 2283.3
+
+#making sure that it is the correct mean value of the entire column
+mean(cleanData$TotalCharges)
+
+#confirming that there are no NA values in the column
+table(is.na(cleanData$TotalCharges))
+
+#replacing special  characters like  "-", "(", ")" with a blank space from data values of the dataset 
+cleanData$Contract=gsub("-", "", cleanData$Contract)
+cleanData$PaymentMethod=gsub("[()]", "", cleanData$PaymentMethod)
+cleanData$PaymentMethod=gsub("[()]", "", cleanData$PaymentMethod)
+
+#replacing the blank space with . in the datset as later we will be creating dummy variables and for that we don't want these blank space in the column name
+cleanData$Contract<-str_replace_all(cleanData$Contract, c(" " = "." , "," = "" ))
+cleanData$PaymentMethod<-str_replace_all(cleanData$PaymentMethod, c(" " = "." , "," = "" ))
+cleanData$InternetService<-str_replace_all(cleanData$InternetService, c(" " = "." , "," = "" ))
+
+head(cleanData,5)
+glimpse(cleanData)
+dim(cleanData)
+summary(cleanData)
+
+```
+
+
+
+```{r}
+#changing all the values from True/Fales and Yes/No to 1 and 0 
+cleanData$Churn <- ifelse(cleanData$Churn == "Yes", 1, 0) # 1=Yes / 0=No
+cleanData$gender <- ifelse(cleanData$gender == "Male", 1, 0) # 1=male / 0=female
+#Senior citizen already in 0 and 1
+cleanData$Partner <- ifelse(cleanData$Partner == "Yes", 1, 0) # 1=Yes / 0=No
+cleanData$Dependents <- ifelse(cleanData$Dependents == "Yes", 1, 0) # 1=Yes / 0=No
+#Tenure in numeric form
+cleanData$PhoneService <- ifelse(cleanData$PhoneService == "Yes", 1, 0) # 1=Yes / 0=No
+
+#cleanData$Contract <- ifelse(cleanData$Contract == "Yes", 1, 0) # One year / Two year / Month-to-month
+cleanData$Contract = as.factor(cleanData$Contract)
+cleanData$PaperlessBilling <- ifelse(cleanData$PaperlessBilling == "Yes", 1, 0) # 1=Yes / 0=No
+
+#cleanData$PaymentMethod <- ifelse(cleanData$PaymentMethod == "Yes", 1, 0) # (Mailed check) / (Electronic check) / (Credit card (automatic)) / (Bank transfer (automatic))
+cleanData$PaymentMethod = as.factor(cleanData$PaymentMethod)
+# Monthly charges in numeric form
+# Total charges in numeric form
+
+cleanData$MultipleLines <- ifelse(cleanData$MultipleLines == "Yes", 1, 0) # 1=Yes / 0=No, No phone services
+
+#cleanData$InternetService <- ifelse(cleanData$InternetService == "Yes", 1, 0) # DSL / Fiber optic	/ No
+cleanData$InternetService = as.factor(cleanData$InternetService)
+
+cleanData$OnlineSecurity <- ifelse(cleanData$OnlineSecurity == "Yes", 1, 0) # 1=Yes / 0=No, No phone services
+cleanData$OnlineBackup <- ifelse(cleanData$OnlineBackup == "Yes", 1, 0) # 1=Yes / 0=No, No phone services
+cleanData$DeviceProtection  <- ifelse(cleanData$DeviceProtection  == "Yes", 1, 0) # 1=Yes / 0=No, No phone services
+cleanData$TechSupport <- ifelse(cleanData$TechSupport == "Yes", 1, 0) # 1=Yes / 0=No, No phone services
+cleanData$StreamingTV <- ifelse(cleanData$StreamingTV == "Yes", 1, 0) # 1=Yes / 0=No, No phone services
+cleanData$StreamingMovies <- ifelse(cleanData$StreamingMovies == "Yes", 1, 0) # 1=Yes / 0=No, No phone services
+glimpse(cleanData)
+```
+
+#Converting all variables  numeric form
+```{r}
+
+num.cleanData = data.frame(cleanData)
+
+#num.cleanData$Churn  = as.numeric(num.cleanData$Churn)
+num.cleanData$gender  = as.numeric(num.cleanData$gender)
+num.cleanData$SeniorCitizen  = as.numeric(num.cleanData$SeniorCitizen)
+num.cleanData$Partner = as.numeric(num.cleanData$Partner)
+num.cleanData$Dependents  = as.numeric(num.cleanData$Dependents)
+num.cleanData$tenure  = as.numeric(num.cleanData$tenure)
+num.cleanData$PhoneService  = as.numeric(num.cleanData$PhoneService)
+num.cleanData$Contract  = as.factor(num.cleanData$Contract)
+num.cleanData$Contract  = as.numeric(num.cleanData$Contract)
+num.cleanData$PaperlessBilling  = as.numeric(num.cleanData$PaperlessBilling)
+num.cleanData$PaymentMethod  = as.factor(num.cleanData$PaymentMethod)
+num.cleanData$PaymentMethod  = as.numeric(num.cleanData$PaymentMethod)
+num.cleanData$MonthlyCharges  = as.numeric(num.cleanData$MonthlyCharges)
+num.cleanData$TotalCharges  = as.numeric(num.cleanData$TotalCharges)
+num.cleanData$MultipleLines  = as.numeric(num.cleanData$MultipleLines)
+num.cleanData$InternetService  = as.factor(num.cleanData$InternetService)
+num.cleanData$InternetService  = as.numeric(num.cleanData$InternetService)
+num.cleanData$OnlineSecurity  = as.numeric(num.cleanData$OnlineSecurity)
+num.cleanData$OnlineBackup  = as.numeric(num.cleanData$OnlineBackup)
+num.cleanData$DeviceProtection  = as.numeric(num.cleanData$DeviceProtection)
+num.cleanData$TechSupport  = as.numeric(num.cleanData$TechSupport)
+num.cleanData$StreamingTV  = as.numeric(num.cleanData$StreamingTV)
+num.cleanData$StreamingMovies  = as.numeric(num.cleanData$StreamingMovies)
+glimpse(num.cleanData)
+str(cleanData)
+summary(num.cleanData)
+```
+```{r}
+sapply(num.cleanData,class)
+```
+
+
+
+
+```{r}
+#Don't execute below line of code twice
+cleanData = cleanData[,c(12,1,2,3,4,5:20)] #bringing churn column at the 2nd place so that it is used in the correlation table below as reference
+cleanData$Churn.1 = NULL #removing column Churn.1 which is a copy of churn column created after executing the above line of code
+
+```
+
+```{r}
+
+#install.packages("DataExplorer")
+library(DataExplorer)
+
+plot_correlation(cleanData, type="c")
+
+```
+
+```{r}
+pairs(cleanData[, -20])
+```
+
+```{r}
+sapply(cleanData,class)
+```
+
+```{r}
+#creating testing and training datasets
+set.seed(10)
+data1 = sort(sample(nrow(cleanData), nrow(cleanData)*.70)) 
+train.set1 = cleanData[data1,] 
+test.set1 = cleanData[-data1,]
+#data2 = sort(sample(nrow(cleanData), nrow(cleanData)*.60)) 
+#train.set2 = cleanData[data2,] 
+#test.set2 = cleanData[-data2,]
+
+```
+
+
+#logistic regression
+```{r}
+#install.packages("MASS")
+library(MASS)
+set.seed(10)
+logistic.reg.model = glm(Churn ~., data = train.set1 , family="binomial")
+summary(logistic.reg.model)
+```
+
+```{r}
+#library(pROC)
+#(roc(cleanData$Churn, logistic.reg.model), print.auc = TRUE)
+```
+
+
+```{r}
+#draw roc curve to find value of 0.5 (probablity threshold) or (probability, sensitivity, accuracy and specificity curver)
+`pred1 = predict(logistic.reg.model, test.set1, type = "response")
+pred1.glm = rep(0, length(pred1))
+pred1.glm[pred1 > 0.5] = 1
+table(pred1.glm, test.set1$Churn)
+meanval1 = mean(pred1.glm != test.set1$Churn)
+meanval1
+
+cat("Test error of the Logistic Regression model is", meanval1*100,"%")`
+```
+
+#KNN
+
+```{r}
+set.seed(10)
+num.data1 = sort(sample(nrow(num.cleanData), nrow(num.cleanData)*.70)) 
+num.train.set1 = num.cleanData[num.data1,] 
+num.test.set1 = num.cleanData[-num.data1,]
+
+
+KNNtrain1 = cbind(num.train.set1$gender, num.train.set1$SeniorCitizen, num.train.set1$Partner, num.train.set1$Dependents, num.train.set1$tenure, num.train.set1$PhoneService, num.train.set1$Contract ,num.train.set1$PaperlessBilling ,num.train.set1$PaymentMethod, num.train.set1$MonthlyCharges, num.train.set1$TotalCharges, num.train.set1$MultipleLines, num.train.set1$InternetService, num.train.set1$OnlineSecurity, num.train.set1$OnlineBackup, num.train.set1$DeviceProtection, num.train.set1$TechSupport, num.train.set1$StreamingTV, num.train.set1$StreamingMovies)
+
+KNNtest1 = cbind(num.test.set1$gender, num.test.set1$SeniorCitizen, num.test.set1$Partner, num.test.set1$Dependents, num.test.set1$tenure, num.test.set1$PhoneService, num.test.set1$Contract ,num.test.set1$PaperlessBilling ,num.test.set1$PaymentMethod, num.test.set1$MonthlyCharges, num.test.set1$TotalCharges, num.test.set1$MultipleLines, num.test.set1$InternetService, num.test.set1$OnlineSecurity, num.test.set1$OnlineBackup, num.test.set1$DeviceProtection, num.test.set1$TechSupport, num.test.set1$StreamingTV, num.test.set1$StreamingMovies)
+
+KNN_Col1 = cbind("gender","SeniorCitizen","Partner", "Dependents", "tenure", "PhoneService", "Contract", "PaperlessBilling", "PaymentMethod", "MonthlyCharges", "TotalCharges", "MultipleLines", "InternetService","OnlineSecurity","OnlineBackup","DeviceProtection","TechSupport","StreamingTV","StreamingMovies")
+colnames(KNNtrain1) = KNN_Col1
+colnames(KNNtest1) = KNN_Col1
+```
+```{r}
+library(class)
+num.train.set1.Churn = num.train.set1$Churn
+set.seed(1)
+
+kNNModel1 = knn(KNNtrain1, KNNtest1, num.train.set1.Churn, k = 5)
+table(kNNModel1, num.test.set1$Churn)
+meanval1 = mean(kNNModel1 != num.test.set1$Churn)
+meanval1
+cat("Test error of the KNN model is", meanval1*100,"% for K= 5")
+
+kNNModel1 = knn(KNNtrain1, KNNtest1, num.train.set1.Churn, k = 10)
+table(kNNModel1, num.test.set1$Churn)
+meanval1 = mean(kNNModel1 != num.test.set1$Churn)
+meanval1
+cat("Test error of the KNN model is", meanval1*100,"% for K=10")
+
+kNNModel1 = knn(KNNtrain1, KNNtest1, num.train.set1.Churn, k = 15)
+table(kNNModel1, num.test.set1$Churn)
+meanval1 = mean(kNNModel1 != num.test.set1$Churn)
+meanval1
+cat("Test error of the KNN model is", meanval1*100,"% for K=15")
+
+kNNModel1 = knn(KNNtrain1, KNNtest1, num.train.set1.Churn, k = 20)
+table(kNNModel1, num.test.set1$Churn)
+meanval1 = mean(kNNModel1 != num.test.set1$Churn)
+meanval1
+cat("Test error of the KNN model is", meanval1*100,"% for K=20")
+
+kNNModel1 = knn(KNNtrain1, KNNtest1, num.train.set1.Churn, k = 25)
+table(kNNModel1, num.test.set1$Churn)
+meanval1 = mean(kNNModel1 != num.test.set1$Churn)
+meanval1
+cat("Test error of the KNN model is", meanval1*100,"% for K=25")
+
+kNNModel1 = knn(KNNtrain1, KNNtest1, num.train.set1.Churn, k = 30)
+table(kNNModel1, num.test.set1$Churn)
+meanval1 = mean(kNNModel1 != num.test.set1$Churn)
+meanval1
+cat("Test error of the KNN model is", meanval1*100,"% for K=30")
+
+kNNModel1 = knn(KNNtrain1, KNNtest1, num.train.set1.Churn, k = 35)
+table(kNNModel1, num.test.set1$Churn)
+meanval1 = mean(kNNModel1 != num.test.set1$Churn)
+meanval1
+cat("Test error of the KNN model is", meanval1*100,"% for K=35")
+```
+
+#Lasso
+
+```{r}
+#install.packages("glmnet")
+library(glmnet)
+train.set1$Churn=as.numeric(train.set1$Churn)
+test.set1$Churn=as.numeric(test.set1$Churn)
+matrix.train.set1<- model.matrix(Churn ~ ., data = train.set1) 
+matrix.test.set1 <- model.matrix(Churn ~ ., data = test.set1) 
+grid <- 10 ^ seq(10, -2, length = 100) 
+fit.lasso <- glmnet(matrix.train.set1, train.set1$Churn, alpha = 1, lambda = grid, thresh = 1e-12)
+set.seed(30)
+cv.lasso <- cv.glmnet(matrix.train.set1, train.set1$Churn, alpha = 1, lambda = grid, thresh = 1e-12)
+bestlam.lasso <- cv.lasso$lambda.min
+bestlam.lasso
+
+```
+```{r}
+pred.lasso <- predict(fit.lasso, s = bestlam.lasso, newx = matrix.test.set1)
+mean((pred.lasso - test.set1$Churn)^2)
+
+```
+
+```{r}
+#finding non-zero coefficient estimates
+predict(fit.lasso, s = bestlam.lasso, type = "coefficients")
+```
+There are 17 non-zero coefficient estimates as seen above after not considering Intercept and id
+
+
+#PCR
+
+
+```{r}
+#fitting PCR model
+library(pls)
+set.seed(1)
+fit.pcr <- pcr(Churn ~ ., data = train.set1, scale = TRUE, validation = "CV")
+summary(fit.pcr)
+validationplot(fit.pcr, val.type = "MSEP")
+
+```
+```{r}
+pred.pcr <- predict(fit.pcr, test.set1, ncomp = 13)  
+mean((pred.pcr - test.set1$Churn)^2)
+```
+The test mean square error obtained for PCR model is  0.1403597
+
+
+# random forest
+```{r}
+#applying random forest
+library(randomForest)
+cleanData$Churn = as.factor(cleanData$Churn)
+data1 = sort(sample(nrow(cleanData), nrow(cleanData)*.70)) 
+train.set1 = cleanData[data1,] 
+test.set1 = cleanData[-data1,]
+
+#levels(test.set1$customerID)<-levels(train.set1$customerID)
+levels(test.set1$Churn)<-levels(train.set1$Churn)
+levels(test.set1$gender)<-levels(train.set1$gender)
+levels(test.set1$SeniorCitizen)<-levels(train.set1$SeniorCitizen)
+levels(test.set1$Partner)<-levels(train.set1$Partner)
+levels(test.set1$Dependents)<-levels(train.set1$Dependents)
+levels(test.set1$tenure)<-levels(train.set1$tenure)
+levels(test.set1$PhoneService)<-levels(train.set1$PhoneService)
+levels(test.set1$Contract)<-levels(train.set1$Contract)
+levels(test.set1$PaperlessBilling)<-levels(train.set1$PaperlessBilling)
+levels(test.set1$PaymentMethod)<-levels(train.set1$PaymentMethod)
+levels(test.set1$MonthlyCharges)<-levels(train.set1$MonthlyCharges)
+levels(test.set1$TotalCharges)<-levels(train.set1$TotalCharges)
+levels(test.set1$MultipleLines)<-levels(train.set1$MultipleLines)
+levels(test.set1$InternetService)<-levels(train.set1$InternetService)
+levels(test.set1$OnlineSecurity)<-levels(train.set1$OnlineSecurity)
+levels(test.set1$OnlineBackup)<-levels(train.set1$OnlineBackup)
+levels(test.set1$DeviceProtection)<-levels(train.set1$DeviceProtection)
+levels(test.set1$TechSupport)<-levels(train.set1$TechSupport)
+levels(test.set1$StreamingTV)<-levels(train.set1$StreamingTV)
+levels(test.set1$StreamingMovies)<-levels(train.set1$StreamingMovies)
+levels(test.set1$Contract)<-levels(train.set1$Contract)
+
+
+
+set.seed(123)
+y_test <- cleanData["Churn"]
+fit1 <- randomForest(Churn~. , data=train.set1, mtry = 19, nTree=500, importance=TRUE)
+fit1
+y_pred=predict(fit1,newdata = test.set1)
+
+#Using IMportance to find out which variables are important
+importance(fit1)
+
+t1=table(y_pred, test.set1$Churn)
+Accuracy = (t1[1,1] + t1[2,2]) / (dim(test.set1)[1])
+cat("Accuracy is ", Accuracy)
+```
+
+# Boosting Model
+```{r}
+#install.packages("gbm")
+library(gbm)
+set.seed(1)
+#converting response variable to char type to be used in the boosting model
+train.set1$Churn = as.character(train.set1$Churn)
+test.set1$Churn = as.character(test.set1$Churn)
+fit.boost=gbm(Churn~., data = train.set1, distribution = "bernoulli", n.trees=500, interaction.depth=4, shrinkage = 0.1)
+pred4 = predict(fit.boost, newdata = test.set1, n.trees = 500)
+pred4 = ifelse(pred4 > 0.5,1,0)
+boost.table = table(pred4, test.set1$Churn)
+
+accuracy = (boost.table[1,1] + boost.table[2,2]) / (dim(test.set1)[1])
+cat("Accuracy of the Boosting Model is", accuracy*100)
+```  
+
+```{r}
+#Using summary function to find important variables
+summary(fit.boost)
+```
+
+# SVM with linear kernel
+
+```{r}
+library(e1071)
+num.train.set1$Churn = as.factor(num.train.set1$Churn)
+num.test.set1$Churn = as.factor(num.test.set1$Churn)
+set.seed(123)
+svc.fit <- svm(Churn ~ ., data = num.train.set1, kernel = "linear", cost = 0.01)
+summary(svc.fit)
+```
+the training and test error rates? 
+```{r}
+train.pred <- predict(svc.fit,num.train.set1)
+table(num.train.set1$Churn, train.pred)
+```
+```{r}
+
+cat("Training error rate is",(633+358)/(3254+685+633+358))
+```
+
+```{r}
+test.pred <- predict(svc.fit, num.test.set1)
+table(num.test.set1$Churn, test.pred)
+
+```
+```{r}
+
+cat("Test error rate is",(268+137)/(1425+283+268+137))
+```
+
+# SVM with polynomial kernel degree=2
+
+```{r}
+library(e1071)
+num.train.set1$Churn = as.factor(num.train.set1$Churn)
+num.test.set1$Churn = as.factor(num.test.set1$Churn)
+set.seed(123)
+svc.fit <- svm(Churn ~ ., data = num.train.set1, kernel = "polynomial", degree=2)
+summary(svc.fit)
+```
+the training and test error rates? 
+```{r}
+train.pred <- predict(svc.fit,num.train.set1)
+table(num.train.set1$Churn, train.pred)
+```
+```{r}
+
+cat("Training error rate is",(700+270)/(3342+618+700+270))
+```
+
+```{r}
+test.pred <- predict(svc.fit, num.test.set1)
+table(num.test.set1$Churn, test.pred)
+
+```
+```{r}
+
+cat("Test error rate is",(309+110)/(1452+242+309+110))
+```
+
+# SVM with polynomial kernel degree=3
+
+```{r}
+library(e1071)
+num.train.set1$Churn = as.factor(num.train.set1$Churn)
+num.test.set1$Churn = as.factor(num.test.set1$Churn)
+set.seed(123)
+svc.fit <- svm(Churn ~ ., data = num.train.set1, kernel = "polynomial", degree=3)
+summary(svc.fit)
+```
+the training and test error rates? 
+```{r}
+train.pred <- predict(svc.fit,num.train.set1)
+table(num.train.set1$Churn, train.pred)
+```
+```{r}
+
+cat("Training error rate is",(600+254)/(3358+718+600+254))
+```
+
+```{r}
+test.pred <- predict(svc.fit, num.test.set1)
+table(num.test.set1$Churn, test.pred)
+
+```
+```{r}
+
+cat("Test error rate is",(146+290)/(1416+261+146+290))
+```
+
+# SVM with radial kernel
+
+```{r}
+library(e1071)
+num.train.set1$Churn = as.factor(num.train.set1$Churn)
+num.test.set1$Churn = as.factor(num.test.set1$Churn)
+set.seed(123)
+svc.fit <- svm(Churn ~ ., data = num.train.set1, kernel = "radial")
+summary(svc.fit)
+```
+the training and test error rates? 
+```{r}
+train.pred <- predict(svc.fit,num.train.set1)
+table(num.train.set1$Churn, train.pred)
+```
+```{r}
+
+cat("Training error rate is",(617+266)/(3346+701+617+266))
+```
+
+```{r}
+test.pred <- predict(svc.fit, num.test.set1)
+table(num.test.set1$Churn, test.pred)
+
+```
+```{r}
+
+cat("Test error rate is",(291+127)/(1435+260+291+127))
+```
+
+
+#creating dummy variables for the variables who are in factor form
+```{r}
+#creating a new dataset d.cleanData where we will add dummy variables for the categorical variables
+d.cleanData = data.frame(cleanData)
+
+for(unique_value in unique(d.cleanData$Contract)){
+d.cleanData[paste("Contract", unique_value, sep = ".")] <- ifelse(d.cleanData$Contract == unique_value, 1, 0)
+}
+
+for(unique_value in unique(d.cleanData$PaymentMethod)){
+d.cleanData[paste("PaymentMethod", unique_value, sep = ".")] <- ifelse(d.cleanData$PaymentMethod == unique_value, 1, 0)
+}
+
+for(unique_value in unique(d.cleanData$InternetService)){
+d.cleanData[paste("InternetService", unique_value, sep = ".")] <- ifelse(d.cleanData$InternetService == unique_value, 1, 0)
+}
+#removing Contract, PaymentMethod, InternetService from the dataset as we have created dummy variables for those 3 variables above
+d.cleanData$Contract=NULL
+
+d.cleanData$PaymentMethod=NULL
+
+d.cleanData$InternetService=NULL
+
+```
+
+
+```{r}
+colnames(d.cleanData)
+```
+
+```{r}
+plot_correlation(d.cleanData, type="c")
+```
+
+```{r}
+d.cleanData$Churn = as.factor(d.cleanData$Churn)
+sapply(d.cleanData,class)
+```
+
+
+
+#applying random forest with dummy variables
+```{r}
+
+
+library(randomForest)
+d.cleanData$Churn = as.factor(d.cleanData$Churn)
+
+d.data1 = sort(sample(nrow(d.cleanData), nrow(d.cleanData)*.70)) 
+d.train.set1 = d.cleanData[d.data1,] 
+d.test.set1 = d.cleanData[-d.data1,]
+
+
+
+levels(d.test.set1$Churn)<-levels(d.train.set1$Churn)
+levels(d.test.set1$gender)<-levels(d.train.set1$gender)
+levels(d.test.set1$SeniorCitizen)<-levels(d.train.set1$SeniorCitizen)
+levels(d.test.set1$Partner)<-levels(d.train.set1$Partner)
+levels(d.test.set1$Dependents)<-levels(d.train.set1$Dependents)
+levels(d.test.set1$tenure)<-levels(d.train.set1$tenure)
+levels(d.test.set1$PhoneService)<-levels(d.train.set1$PhoneService)
+#levels(d.test.set1$Contract)<-levels(d.train.set1$Contract)
+levels(d.test.set1$PaperlessBilling)<-levels(d.train.set1$PaperlessBilling)
+levels(d.test.set1$PaymentMethod.Mailed.check)<-levels(d.train.set1$PaymentMethod.Mailed.check)
+levels(d.test.set1$PaymentMethod.Electronic.check)<-levels(d.train.set1$PaymentMethod.Electronic.check)
+levels(d.test.set1$PaymentMethod.Credit.card.automatic)<-levels(d.train.set1$PaymentMethod.Credit.card.automatic)
+levels(d.test.set1$PaymentMethod.Bank.transfer.automatic)<-levels(d.train.set1$PaymentMethod.Bank.transfer.automatic)
+levels(d.test.set1$MonthlyCharges)<-levels(d.train.set1$MonthlyCharges)
+levels(d.test.set1$TotalCharges)<-levels(d.train.set1$TotalCharges)
+levels(d.test.set1$MultipleLines)<-levels(d.train.set1$MultipleLines)
+levels(d.test.set1$InternetService.DSL)<-levels(d.train.set1$InternetService.DSL)
+levels(d.test.set1$InternetService.Fiber.optic)<-levels(d.train.set1$InternetService.Fiber.optic)
+levels(d.test.set1$InternetService.No)<-levels(d.train.set1$InternetService.No)
+levels(d.test.set1$OnlineSecurity)<-levels(d.train.set1$OnlineSecurity)
+levels(d.test.set1$OnlineBackup)<-levels(d.train.set1$OnlineBackup)
+levels(d.test.set1$DeviceProtection)<-levels(d.train.set1$DeviceProtection)
+levels(d.test.set1$TechSupport)<-levels(d.train.set1$TechSupport)
+levels(d.test.set1$StreamingTV)<-levels(d.train.set1$StreamingTV)
+levels(d.test.set1$StreamingMovies)<-levels(d.train.set1$StreamingMovies)
+levels(d.test.set1$Contract.One.year)<-levels(d.train.set1$Contract.One.year)
+levels(d.test.set1$Contract.Monthtomonth)<-levels(d.train.set1$Contract.Monthtomonth)
+levels(d.test.set1$Contract.Two.year)<-levels(d.train.set1$Contract.Two.year)
+
+
+set.seed(123)
+y_test <- d.test.set1["Churn"]
+fit1 <- randomForest(Churn ~. , data=d.train.set1, mtry = 26, nTree=500, importance=TRUE,na.action=na.roughfix)
+fit1
+y_pred=predict(fit1,newdata = d.test.set1)
+
+#Using IMportance to find out which variables are important
+importance(fit1)
+varImpPlot(fit1)
+t1=table(y_pred, d.test.set1$Churn)
+Accuracy = (t1[1,1] + t1[2,2]) / (dim(d.test.set1)[1])
+cat("Accuracy is ", Accuracy)
+```
+```{r}
+plot_correlation(d.cleanData, type="c")
+```
+
+```{r}
+colnames(d.train.set1)
+```
+
+```{r}
+library(randomForest)
+d.data1 = sort(sample(nrow(d.cleanData), nrow(d.cleanData)*.70)) 
+d.train.set1 = d.cleanData[d.data1,] 
+d.test.set1 = d.cleanData[-d.data1,]
+
+
+#levels(test.set1$customerID)<-levels(train.set1$customerID)
+levels(d.test.set1$Churn)<-levels(d.train.set1$Churn)
+levels(d.test.set1$gender)<-levels(d.train.set1$gender)
+levels(d.test.set1$SeniorCitizen)<-levels(d.train.set1$SeniorCitizen)
+levels(d.test.set1$Partner)<-levels(d.train.set1$Partner)
+levels(d.test.set1$Dependents)<-levels(d.train.set1$Dependents)
+levels(d.test.set1$tenure)<-levels(d.train.set1$tenure)
+levels(d.test.set1$PhoneService)<-levels(d.train.set1$PhoneService)
+#levels(test.set1$Contract)<-levels(train.set1$Contract)
+levels(d.test.set1$PaperlessBilling)<-levels(d.train.set1$PaperlessBilling)
+levels(d.test.set1$PaymentMethod.Mailed.check)<-levels(d.train.set1$PaymentMethod.Mailed.check)
+levels(d.test.set1$PaymentMethod.Electronic.check)<-levels(d.train.set1$PaymentMethod.Electronic.check)
+levels(d.test.set1$PaymentMethod.Credit.card.automatic)<-levels(d.train.set1$PaymentMethod.Credit.card.automatic)
+levels(d.test.set1$PaymentMethod.Bank.transfer.automatic)<-levels(d.train.set1$PaymentMethod.Bank.transfer.automatic)
+levels(d.test.set1$MonthlyCharges)<-levels(d.train.set1$MonthlyCharges)
+levels(d.test.set1$TotalCharges)<-levels(d.train.set1$TotalCharges)
+levels(d.test.set1$MultipleLines)<-levels(d.train.set1$MultipleLines)
+levels(d.test.set1$InternetService.DSL)<-levels(d.train.set1$InternetService.DSL)
+levels(d.test.set1$InternetService.Fiber.optic)<-levels(d.train.set1$InternetService.Fiber.optic)
+levels(d.test.set1$InternetService.No)<-levels(d.train.set1$InternetService.No)
+levels(d.test.set1$OnlineSecurity)<-levels(d.train.set1$OnlineSecurity)
+levels(d.test.set1$OnlineBackup)<-levels(d.train.set1$OnlineBackup)
+levels(d.test.set1$DeviceProtection)<-levels(d.train.set1$DeviceProtection)
+levels(d.test.set1$TechSupport)<-levels(d.train.set1$TechSupport)
+levels(d.test.set1$StreamingTV)<-levels(d.train.set1$StreamingTV)
+levels(d.test.set1$StreamingMovies)<-levels(d.train.set1$StreamingMovies)
+levels(d.test.set1$Contract.One.year)<-levels(d.train.set1$Contract.One.year)
+levels(d.test.set1$Contract.Monthtomonth)<-levels(d.train.set1$Contract.Monthtomonth)
+levels(d.test.set1$Contract.Two.year)<-levels(d.train.set1$Contract.Two.year)
+
+
+set.seed(123)
+y_test <- d.test.set1["Churn"]
+fit1 <- randomForest(Churn~PaymentMethod.Electronic.check+PaymentMethod.Bank.transfer.automatic+PaymentMethod.Mailed.check+PaymentMethod.Credit.card.automatic+InternetService.Fiber.optic+InternetService.No+Contract.One.year+Contract.Two.year+Contract.Monthtomonth+tenure+ TotalCharges+ PaperlessBilling , data=d.train.set1, mtry = 26, nTree=500, importance=TRUE)
+fit1
+y_pred=predict(fit1,newdata = d.test.set1)
+
+#Using IMportance to find out which variables are important
+importance(fit1)
+
+t1=table(y_pred, d.test.set1$Churn)
+Accuracy = (t1[1,1] + t1[2,2]) / (dim(d.test.set1)[1])
+cat("Accuracy is ", Accuracy)
+```
+
